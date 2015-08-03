@@ -18,7 +18,7 @@ M.array = function(v)
 			return (a.rows == b.rows and a.cols == b.cols)
 		end,
 		__tostring = function(t)
-			return ('%dx%d'):format(t.rows, t.cols)
+			return ('%dx%d'):format(dim.rows, dim.cols)
 		end,
 	})
 

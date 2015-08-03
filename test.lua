@@ -1,8 +1,6 @@
 ﻿local serpent = require 'serpent'
 local nl = require 'utils/nl'
 
-math.randomseed(os.time())
-
 local function drawProgress(percent, elms, firstTime)
 	local fill = math.floor(elms * (percent/100))
 	local empty = elms - fill
@@ -94,37 +92,45 @@ local function test(X,y, layers)
 		},
 	})
 
+	math.randomseed(1)
 	local steps = 10000
+	local p = progress(64, steps)
 
-	local syn = net.syn
-	local layer = net.l
+	local function nonLin(x, deriv)
+		if deriv then
+			return x * (1-x)
+		else
+			return 1/(1 + (-x).exp)
+		end
+	end
 
 	net.load()
-	
+	local syn = net.syn
+	local layer = net.l
 	layer[0] = X
-
-	local p = progress(80, steps)
+	layer[layers+1] = y
+	syn[0] = 2 * nl.random.random({X.dim.cols, 3}) - 1
 
 	for j=1,steps do
 		local layerDelta = {}
+		local layerError = {}
+
 		for l=1,layers do
-			layer[l] = 1 / (1 + (-layer[l-1].dot(syn[l])).exp)
+			layer[l] = nonLin(layer[l-1].dot(syn[l-1]))
 	    end
 
 		for l=layers,1,-1 do
-			if (l == layers) then
-				layerDelta[l] = (y - layer[l]).elmProd(layer[l].elmProd(1 - layer[l]))
+			if l==layers then
+				layerError[l] = y - layer[l]
 			else
-				layerDelta[l] = layerDelta[l+1].dot(syn[l+1].T).elmProd(layer[l].elmProd(1 - layer[l]))
-			end
-		end
+				layerError[l] = layerDelta[l+1].dot(syn[l].T)
+	    	end
 
-		for l=layers,1,-1 do
-			if l==1 then
-				syn[l].add(X.T.dot(layerDelta[l]))
-			else
-				syn[l].add(layer[l-1].T.dot(layerDelta[l]))
-			end			
+			layerDelta[l] = layerError[l] * nonLin(layer[l], true)
+	    end
+
+		for l=layers-1,0,-1 do
+			syn[l].add(layer[l].T.dot(layer[l+1]))
 		end
 
 		p(j)
@@ -135,7 +141,13 @@ local function test(X,y, layers)
 	print(syn[layers])
 end
 
-local X = nl.array {{0,0,1},{0,1,1},{1,0,1},{1,1,1}}
-local y = nl.array {{0,1,1,0}}.T
+local X = nl.array {
+	{0,0,1},
+	{0,1,1},
+	{1,0,1},
+	{1,1,1}
+}
+
+local y = nl.array {{0,0,1,1}}.T
 
 test(X,y,2)
