@@ -86,6 +86,17 @@ local function newNetwork(X, _y, layersCount)
 		state.syn[i] = 2*nl.random.random {rows, cols} - 1
 	end
 
+	local function propagate(X)
+		for i=0,layersCount do
+			if i==0 then
+				state.layer[i] = X
+			else
+				state.layer[i] = nonlin(state.layer[i-1] * state.syn[i-1])
+			end
+		end
+		return state.layer[layersCount]
+	end
+
 	local function step()
 
 		for i=0,layersCount do
@@ -120,6 +131,7 @@ local function newNetwork(X, _y, layersCount)
 	end
 
 	obj.step = step
+	obj.propagate = propagate
 	obj.load = load
 	obj.save = save
 	obj.layer = state.layer
