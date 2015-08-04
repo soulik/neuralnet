@@ -79,11 +79,12 @@ M.array = function(v)
 
 	local function dotProductVectors(a, b)
 		assert(type(a)=='table' and type(b)=='table', 'Vector dot product can be used only on vectors')
-		assert(a.dim.rows == b.dim.rows and a.dim.cols==b.dim.cols, ('Vectors must have the same size (%s %s)'):format(tostring(a.dim), tostring(b.dim)))
+		assert(a.len == b.len, ('Vectors must have the same length (%d %d)'):format(a.len, b.len))
+
 		local sum = 0
 
 		for i = 1, a.dim.cols do
-			sum = sum + a{1, i} * b{1, i}
+			sum = sum + a[i] * b[i]
 		end
 
 		return sum
@@ -115,7 +116,7 @@ M.array = function(v)
 		assert(type(a)=='table' and type(b)=='table', 'Dot product can be used only on matrices and vectors')
 		--assert(a.dim.rows == b.dim.rows and a.dim.cols==b.dim.cols, ('Matrices or vectors must have the same size (%s %s)'):format(tostring(a.dim), tostring(b.dim)))
 
-		if a.dim.rows == 1 then
+		if a.dim.rows == 1 or a.dim.cols == 1 then
 			return dotProductVectors(a, b)
 		else
 			--[[
@@ -129,9 +130,22 @@ M.array = function(v)
 					row[j] = (row[j] or 0) + dotProductVectors(a.row(i), b.col(j))
 				end
 			end
+			return M.array(out)
 			--]]
 			return a * b
 	    end
+	end
+
+	local function sum()
+		local sum = 0
+		for _,_,v in iteratorRC() do
+			sum = sum + v
+		end
+		return sum
+	end
+
+	local function mean()
+		return sum() / (dim.rows * dim.cols)
 	end
 
 	local function row(i)
@@ -150,7 +164,7 @@ M.array = function(v)
 		return M.array(col)
 	end
 
-	local function tostring()
+	local function Mtostring()
 		local out = {}
 		table.insert(out, ("Matrix: %dx%d\n"):format(dim.rows, dim.cols))
 		for i=1,dim.rows do
@@ -197,7 +211,7 @@ M.array = function(v)
 			if type(fnTT)=='function' then
 				out = fnTT(a, b)
 			else
-				assert(a.dim.rows == b.dim.rows and a.dim.cols == b.dim.cols, ('Matrices must have the same size (%s %s)'):format(tostring(a.dim), tostring(b.dim)))
+				assert((a.dim.rows == b.dim.rows) and (a.dim.cols == b.dim.cols), ('Matrices must have the same size (%s %s)'):format(tostring(a.dim), tostring(b.dim)))
 				for i,j in iteratorRC() do
 					local row = out[i]
 					if type(row)~='table' then
@@ -238,15 +252,13 @@ M.array = function(v)
 		iteratorRC = iteratorRC,
 		iteratorCR = iteratorCR,
 		dim = dim,
-		sum = function()
-			local sum = 0
-			for _,_,v in iteratorRC() do
-				sum = sum + v
-			end
-			return sum
-		end,
+		sum = sum,
+		mean = mean,
 		table = function()
 			return v
+		end,
+		len = function()
+			return math.max(dim.rows, dim.cols)
 		end,
 	}
 
@@ -286,7 +298,13 @@ M.array = function(v)
 
 	setmetatable(obj, {
 		__index = function(t, k)
-			if type(k)=='table' then
+			if type(k)=='number' then
+				if dim.rows > dim.cols then
+					return v[k][1]
+				else
+					return v[1][k]
+				end
+			elseif type(k)=='table' then
 				assert(#k == 2, 'Expected two coordinates')
 				return getVal(k[1], k[2])
 			elseif type(k)=='string' then
@@ -336,7 +354,7 @@ M.array = function(v)
 		__mod = function(a, b)
 			return symmetricBinaryOperator(a, b, function(a,b) return a % b end)
 		end,
-		__tostring = tostring,
+		__tostring = Mtostring,
 	})
 	return obj
 end
