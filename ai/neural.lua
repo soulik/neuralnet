@@ -51,13 +51,9 @@ local function newNetwork(X, _y, layersCount)
 	local function save (fn)
 		local t = {
 			syn = {},
-			layer = {},
 		}
-		for i,v in ipairs(state.syn) do
-			t.syn[i] = v.table
-		end
-		for i,v in ipairs(state.layer) do
-			t.layer[i] = v.table
+		for i=0,layersCount-1 do
+			t.syn[i] = state.syn[i].table
 		end
 
 		assert(io.open(fn,'w')):write(saveData(t)):close()
@@ -67,11 +63,8 @@ local function newNetwork(X, _y, layersCount)
 		local f = io.open(fn,'r')
 		if f then
 			local t0 = loadData(f:read('*a'))
-			for i,v in ipairs(t0.syn) do
-				net.syn[i] = nl.array(v)
-			end
-			for i,v in ipairs(t0.layer) do
-				net.layer[i] = nl.array(v)
+			for i=0,layersCount-1 do
+				state.syn[i] = nl.array(t0.syn[i])
 			end
 		end
 	end
@@ -136,4 +129,5 @@ end
 
 return {
 	new = newNetwork,
+	progress = progress,
 }
