@@ -76,27 +76,27 @@ local function newNetwork(X, _y, layersCount)
 		end
 	end
 
-	local function nonLin(x, deriv)
+	local function nonlin(x, deriv)
 		if deriv then
 			return x.elmProd (1-x)
 		else
-			return 1/(1 + (-x).exp)
+			return 1 / (1 + (-x).exp)
 		end
 	end
 
 	local y = _y.T
 	math.randomseed(1)
 	
-	for i=1,layersCount do
-		local rows = (i==1) and X.dim.cols or y.dim.rows
-		local cols = (i==layersCount) and 1 or y.dim.rows
+	for i=0,layersCount-1 do
+		local rows = (i==0) and X.dim.cols or y.dim.rows
+		local cols = (i==layersCount-1) and 1 or y.dim.rows
 		state.syn[i] = 2*nl.random.random {rows, cols} - 1
 	end
 
 	local function step()
 
-		for i=1,layersCount+1 do
-			if i==1 then
+		for i=0,layersCount do
+			if i==0 then
 				state.layer[i] = X
 			else
 				state.layer[i] = nonlin(state.layer[i-1].dot(state.syn[i-1]))
@@ -104,10 +104,10 @@ local function newNetwork(X, _y, layersCount)
 		end
 
 		local delta = {}
-		for i=layersCount+1,2,-1 do
+		for i=layersCount,1,-1 do
 			local error
 
-			if i==layersCount+1 then
+			if i==layersCount then
 				error = y - state.layer[i]
 				obj.error = error.abs.mean
 			else
@@ -116,12 +116,12 @@ local function newNetwork(X, _y, layersCount)
 
 			if type(error)=='number' then
 				delta[i] = error * nonlin(state.layer[i], true)
-			else
+			else				
 				delta[i] = error.elmProd(nonlin(state.layer[i], true))
 			end
 		end
 
-		for i=layersCount,1,-1 do
+		for i=layersCount-1,0,-1 do
 			state.syn[i].add(state.layer[i].T.dot(delta[i+1]))
 		end
 	end

@@ -77,17 +77,38 @@ M.array = function(v)
 		return out
 	end
 
-	local function dotProductVectors(a, b)
-		assert(type(a)=='table' and type(b)=='table', 'Vector dot product can be used only on vectors')
-		assert(a.len == b.len, ('Vectors must have the same length (%d %d)'):format(a.len, b.len))
-
+	local function dotProductSimple(a,b)
 		local sum = 0
 
 		for i = 1, a.dim.cols do
-			sum = sum + a[i] * b[i]
+			sum = sum + a{1, i} * b{i, 1}
 		end
-
 		return sum
+	end
+
+	local function dotProductVectors(a, b)
+		assert(type(a)=='table' and type(b)=='table', 'Vector dot product can be used only on vectors')
+		assert(a.len == b.len, ('Vectors must have the same length (%d %d)'):format(a.len, b.len))
+		--[[
+		  1				1 2 4		1 2 4
+		  2							2 4 8
+		  4							4 8 16
+
+		  1 2 4         1			21
+		  				2
+		  				4
+		--]]
+		local out = {}
+		for i= 1, a.dim.rows do
+			local row = out[i]
+			if type(row)~='table' then
+				row = {}; out[i] = row
+			end
+			for j = 1, b.dim.cols do
+				row[j] = (row[j] or 0) + dotProductSimple(a.row(i), b.col(j))
+			end
+		end
+		return M.array(out)
 	end
 	
 	local function dotProductML(a, b, c)
@@ -114,25 +135,25 @@ M.array = function(v)
 
 	local function dotProductMatrix(a, b)
 		assert(type(a)=='table' and type(b)=='table', 'Dot product can be used only on matrices and vectors')
-		--assert(a.dim.rows == b.dim.rows and a.dim.cols==b.dim.cols, ('Matrices or vectors must have the same size (%s %s)'):format(tostring(a.dim), tostring(b.dim)))
 
-		if a.dim.rows == 1 or a.dim.cols == 1 then
+		if (a.dim.rows == 1 or a.dim.cols == 1) and (b.dim.rows == 1 or b.dim.cols == 1) then
 			return dotProductVectors(a, b)
+		elseif (a.dim.rows > 1 and a.dim.cols > 1) and (b.dim.rows > 1 and b.dim.cols > 1) then
+			return M.array(multiplyMatrices(a, b))
 		else
-			--[[
+			assert(a.dim.cols == b.dim.rows)
+
 			local out = {}
-			for i= 1 , a.dim.rows do
-				local row = out[i]
-				if type(row)~='table' then
-					row = {}; out[i] = row
+			if a.dim.rows > 1 then
+				for i = 1 , a.dim.rows do
+					out[i] = {dotProductVectors(a.row(i), b)}
 				end
-				for j = 1, a.dim.cols do
-					row[j] = (row[j] or 0) + dotProductVectors(a.row(i), b.col(j))
+			else
+				for i = 1 , b.dim.rows do
+					out[i] = {dotProductVectors(b.col(i), a)}
 				end
 			end
 			return M.array(out)
-			--]]
-			return a * b
 	    end
 	end
 
@@ -159,7 +180,7 @@ M.array = function(v)
 	local function col(j)
 		local col = {}
 		for i=1,dim.rows do
-			col[i] = obj {i, j}
+			col[i] = {obj {i, j}}
 		end
 		return M.array(col)
 	end
@@ -178,14 +199,21 @@ M.array = function(v)
 	end
 
 	local function getVal(row, col)
-		assert(row >= 1 and row <= dim.rows, 'Invalid row')
-		assert(col >= 1 and col <= dim.cols, 'Invalid column')
-		return v[row][col]
+		assert(row >= 1 and row <= dim.rows, ('Invalid row: %d'):format(row))
+		assert(col >= 1 and col <= dim.cols, ('Invalid column: %d'):format(col))
+		local value = v[row][col]
+
+		if type(value)=='table' then			
+	    	return value{1,1}
+		else
+			return value
+		end
 	end
 
 	local function setVal(row, col, value)
 		assert(row >= 1 and row <= dim.rows, 'Invalid row')
 		assert(col >= 1 and col <= dim.cols, 'Invalid column')
+		assert(type(value)=='number', ('Invalid value at (%d, %d)'):format(row, col))
 		v[row][col] = value
 	end
 
@@ -331,13 +359,15 @@ M.array = function(v)
 			end
 		end,
 		__add = function(a, b)
-			return symmetricBinaryOperator(a,b, function(a,b) return a+b end)
+			return symmetricBinaryOperator(a,b, function(a,b) return a + b end)
 		end,
 		__sub = function(a, b)
 			return symmetricBinaryOperator(a,b, function(a,b) return a - b end)
 		end,
 		__unm = function(a)
-			return unaryOperator(a, function(a) return -a end)
+			return unaryOperator(a, function(a)
+				return -a
+			end)
 		end,
 		__len = function(a)
 			return dim
@@ -381,6 +411,25 @@ M.random.random = function(size)
 		end
 	end
 	return M.array(out)
+end
+
+M.xrange = function(...)
+	local arg={...}
+	local out = {}
+	if #arg == 1 then
+		for i=1,arg[1] do
+			table.insert(out, i)
+		end
+	elseif #arg==2 then
+		for i=arg[1],arg[2] do
+			table.insert(out, i)
+		end
+	else
+		for i=arg[1],arg[2], arg[3] do
+			table.insert(out, i)
+		end
+	end
+	return M.array { out }
 end
 
 return M

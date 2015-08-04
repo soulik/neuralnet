@@ -8,13 +8,13 @@ local X = nl.array {
 	{1,1,1}
 }
 
-local y = nl.array {{0,0,1,1}}
+local y = nl.array {{0,1,1,0}}
 
-local N1 = n.new(X, y, 2)
+local N1 = n.new(X, y, 3)
 
-for i=1,10000 do
+for i=1,20000 do
 	N1.step()
-	if i%100==0 then
+	if i%1000==0 then
 		print(N1.error)
 	end
 end
