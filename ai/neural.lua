@@ -40,9 +40,10 @@ local function progress(elms,steps)
 	end
 end
 
-local function newNetwork(X, _y, layersCount)
+local function newNetwork(layersCount)
 	local layersCount = layersCount or 1
 	local obj = {}
+	local X, y
 	local state = {
 		syn = {},
 		layer = {},
@@ -51,6 +52,7 @@ local function newNetwork(X, _y, layersCount)
 	local function save (fn)
 		local t = {
 			syn = {},
+			layersCount = layersCount,
 		}
 		for i=0,layersCount-1 do
 			t.syn[i] = state.syn[i].table
@@ -66,6 +68,7 @@ local function newNetwork(X, _y, layersCount)
 			for i=0,layersCount-1 do
 				state.syn[i] = nl.array(t0.syn[i])
 			end
+			layersCount = t0.layersCount
 		end
 	end
 
@@ -77,13 +80,16 @@ local function newNetwork(X, _y, layersCount)
 		end
 	end
 
-	local y = _y.T
-	math.randomseed(1)
+	local function init(_X, _y)
+		X = _X
+		y = _y
+		math.randomseed(1)
 	
-	for i=0,layersCount-1 do
-		local rows = (i==0) and X.dim.cols or y.dim.rows
-		local cols = (i==layersCount-1) and 1 or y.dim.rows
-		state.syn[i] = 2*nl.random.random {rows, cols} - 1
+		for i=0,layersCount-1 do
+			local rows = (i==0) and X.dim.cols or y.dim.rows
+			local cols = (i==layersCount-1) and y.dim.cols or y.dim.rows
+			state.syn[i] = 2*nl.random.random {rows, cols} - 1
+		end
 	end
 
 	local function propagate(X)
@@ -130,6 +136,7 @@ local function newNetwork(X, _y, layersCount)
 		end
 	end
 
+	obj.init = init
 	obj.step = step
 	obj.propagate = propagate
 	obj.load = load
