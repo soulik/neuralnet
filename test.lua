@@ -10,7 +10,8 @@ local X = nl.array {
 
 local y = nl.array {{0,1,1,0}}
 
-local N1 = n.new(X, y, 2)
+local N1 = n.new(2)
+N1.init(X, y)
 N1.load('neural.dat')
 
 local function learn()
